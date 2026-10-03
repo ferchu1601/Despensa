@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mi Despensa - Caja y Stock</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f6f8;--card:#fff;--tx:#1b2430;--mut:#6b7686;--bd:#dde1e7;--pri:#1f6feb;--ok:#1a7f4b;--bad:#c62828;--warn:#fff1d6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161c;--card:#1c222b;--tx:#e8ecf2;--mut:#93a0b2;--bd:#2d3643;--pri:#4c8dff;--ok:#4cc38a;--bad:#ff6b6b;--warn:#3a2f12}}
+:root[data-theme="dark"]{--bg:#12161c;--card:#1c222b;--tx:#e8ecf2;--mut:#93a0b2;--bd:#2d3643;--pri:#4c8dff;--ok:#4cc38a;--bad:#ff6b6b;--warn:#3a2f12}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:12px}
+h1{font-size:20px;margin:4px 0 10px}
+h2{font-size:16px;margin:0 0 8px}
+nav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+nav button{flex:1;min-width:90px}
+button,input,select,textarea{font:inherit;color:var(--tx)}
+button{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.p{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
+button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+button.d{color:var(--bad)}
+input,textarea,select{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px;width:100%}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}}
+.plist{max-height:420px;overflow:auto;margin-top:8px;display:grid;gap:6px}
+.pit{display:flex;justify-content:space-between;gap:8px;text-align:left;width:100%}
+.pit small{color:var(--mut)}
+.low{background:var(--warn)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd)}
+.row:last-child{border:0}
+.q{display:flex;gap:4px;align-items:center}
+.q button{padding:2px 9px}
+.tot{font-size:22px;font-weight:700;margin:8px 0}
+.mut{color:var(--mut)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:6px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:middle}
+td input{padding:4px 6px;min-width:70px}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.kp div{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}
+.kp b{display:block;font-size:18px}
+.msg{color:var(--bad);min-height:20px;font-size:13px}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:end}
+label{font-size:12px;color:var(--mut);display:block}
+.hide{display:none}
+body.emp .adm{display:none!important}body:not(.emp) .emo{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🛒 Mi Despensa</h1>
+<div id="net" class="msg"></div>
+<div id="login" class="card hide"><h2>Ingresar</h2>
+ <label>Usuario</label><input id="lem" type="text" autocomplete="username" autocapitalize="none">
+ <label style="margin-top:8px">Contraseña</label><input id="lpw" type="password" autocomplete="current-password">
+ <button class="p" id="lgo" style="width:100%;margin-top:10px">Entrar</button></div>
+<div id="app" class="hide">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap"><span id="who" class="mut"></span><span><button id="lpwb">Cambiar contraseña</button> <button id="lout">Cerrar sesión</button></span></div>
+<nav id="nav">
+ <button data-t="v" class="on">Vender</button>
+ <button data-t="s">Stock</button>
+ <button data-t="h">Ventas por fecha</button>
+ <button data-t="m" class="adm">Resumen mensual</button>
+ <button data-t="u" class="adm">Usuarios</button>
+ <button data-t="b" class="adm">Copia de seguridad</button>
+</nav>
+
+<section id="v">
+ <div class="grid">
+  <div class="card">
+   <h2>Productos</h2>
+   <input id="q" placeholder="Buscar producto o escanear código de barras..." autocomplete="off">
+   <div class="plist" id="plist"></div>
+  </div>
+  <div class="card">
+   <h2>Venta actual</h2>
+   <div id="cart"></div>
+   <div class="tot">Total: <span id="ctot">$0</span></div>
+   <label>Medio de pago</label>
+   <select id="pay"><option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Mercado Pago</option></select>
+   <div class="msg" id="vmsg"></div>
+   <button class="p" id="cobrar" style="width:100%">Cobrar</button>
+  </div>
+ </div>
+</section>
+
+<section id="s" class="hide">
+ <div class="card emo"><h2>Stock</h2><input id="eq" placeholder="Buscar producto..." autocomplete="off"><div id="elist" style="margin-top:8px"></div></div>
+ <div class="card adm">
+  <h2>Agregar producto nuevo</h2>
+  <div class="f">
+   <div><label>Nombre</label><input id="n_name"></div>
+   <div><label>Costo ($)</label><input id="n_cost" type="number" min="0" step="any"></div>
+   <div><label>Precio venta ($)</label><input id="n_price" type="number" min="0" step="any"></div>
+   <div><label>Stock inicial</label><input id="n_stock" type="number" min="0" step="any"></div>
+   <div><label>Stock mínimo</label><input id="n_min" type="number" min="0" step="any"></div>
+   <div><label>Código de barras</label><input id="n_bar"></div>
+   <button class="p" id="n_add">Agregar</button>
+  </div>
+  <div class="msg" id="smsg"></div>
+ </div>
+ <div class="card adm">
+  <h2>Inventario <span class="mut" id="sval"></span></h2>
+  <div class="scroll"><table>
+   <thead><tr><th>Producto</th><th>Cód. barras</th><th>Costo</th><th>Precio</th><th>Mínimo</th><th>Stock</th><th>Ingresó mercadería</th><th></th></tr></thead>
+   <tbody id="stbody"></tbody>
+  </table></div>
+ </div>
+</section>
+
+<section id="h" class="hide">
+ <h2 class="emo">Mis ventas de hoy</h2>
+ <div class="card adm"><div class="f">
+  <div><label>Desde</label><input id="hfrom" type="date"></div>
+  <div><label>Hasta</label><input id="hto" type="date"></div>
+  <button id="rhoy">Hoy</button><button id="r7">Últimos 7 días</button><button id="rmes">Este mes</button>
+ </div></div>
+ <div class="kp">
+  <div>Ventas<b id="k1">$0</b></div><div class="adm">Ganancia<b id="k2">$0</b></div><div>Cantidad de ventas<b id="k3">0</b></div>
+ </div>
+ <div class="card" id="hpay"></div>
+ <div class="card" id="hlist"></div>
+</section>
+
+<section id="m" class="hide">
+ <div class="card"><label>Mes</label><input id="mmonth" type="month" style="max-width:200px"></div>
+ <div class="kp"><div>Ventas del mes<b id="m1">$0</b></div><div>Ganancia del mes<b id="m2">$0</b></div><div>Cantidad de ventas<b id="m3">0</b></div></div>
+ <div class="card" id="mpay"></div>
+ <div class="grid">
+  <div class="card"><h2>Por día</h2><div id="mdays"></div></div>
+  <div class="card"><h2>Productos más vendidos</h2><div id="mtop"></div></div>
+ </div>
+</section>
+
+<section id="u" class="hide adm">
+ <div class="card"><h2>Crear usuario</h2><div class="f">
+  <div><label>Nombre (se ve en las ventas)</label><input id="u_n"></div>
+  <div><label>Usuario (para entrar)</label><input id="u_u" autocapitalize="none"></div>
+  <div><label>Contraseña (mín. 6)</label><input id="u_p" type="password" autocomplete="new-password"></div>
+  <div><label>Perfil</label><select id="u_r"><option value="empleado">Empleado</option><option value="admin">Administrador</option></select></div>
+  <button class="p" id="u_add">Crear</button></div><div class="msg" id="umsg"></div></div>
+ <div class="card"><h2>Usuarios</h2><div id="ulist"></div></div>
+</section>
+
+<section id="b" class="hide">
+ <div class="card">
+  <h2>Copia de seguridad</h2>
+  <p class="mut">Tus datos se guardan en Firebase y se sincronizan en todos los dispositivos. Esta copia sirve como respaldo (guardala en un archivo de texto) o para importar datos de una versión anterior: pegá el texto y apretá Restaurar.</p>
+  <textarea id="bk" rows="8"></textarea>
+  <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+   <button id="bcopy">Copiar copia actual</button>
+   <button class="p" id="brest">Restaurar desde el texto pegado</button>
+  </div>
+  <div class="msg" id="bmsg"></div>
+ </div>
+</section>
+</div></div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,updatePassword,createUserWithEmailAndPassword} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,collection,doc,addDoc,updateDoc,deleteDoc,onSnapshot,query,where,orderBy,writeBatch,increment,getDocs,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ====== CONFIGURACIÓN: completá con los datos de TU proyecto de Firebase (ver la guía) ======
+const NOMBRE="🛒 Mi Despensa";
+const DOMINIO="@usuarios.example.com"; // no hace falta cambiarlo: es solo para armar el login por usuario
+const CFG={apiKey:"AIzaSyB34yj4X4uC28j3bHRxFTGBKth3rDJqSEo",authDomain:"mi-despensa-c832e.firebaseapp.com",projectId:"mi-despensa-c832e",storageBucket:"mi-despensa-c832e.firebasestorage.app",messagingSenderId:"778690538810",appId:"1:778690538810:web:612213cc62046d49747403"};
+// ==========================================================================================
+
+let db={products:[],sales:[]};
+let cart=[];
+const $=id=>document.getElementById(id);
+const money=n=>(+n||0).toLocaleString("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const dayOf=ts=>{const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+
+document.title=NOMBRE+" - Caja y Stock";document.querySelector("h1").textContent=NOMBRE;
+let fs=null,auth=null,unsubP=null,unsubS=null,rangeKey="",rol="",nombre="";
+const toEmail=u=>u.includes("@")?u.trim():u.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"")+DOMINIO;
+const note=t=>{$("net").textContent=t};
+const fail=m=>e=>note(e&&e.code==="permission-denied"?"Tu usuario no tiene permiso en este sistema. Avisale al dueño.":m);
+function upd(id,o){updateDoc(doc(fs,"products",id),o).catch(fail("No se pudo guardar el cambio. Revisá la conexión."))}
+function refresh(){
+ cart=cart.filter(c=>db.products.some(p=>p.id===c.id));
+ renderPlist();renderCart();
+ const t=["s","h","m"].find(x=>!$(x).classList.contains("hide"));
+ if(t==="s"&&!$("stbody").contains(document.activeElement))renderStock();
+ if(t==="h")renderDay(); if(t==="m")renderMonth();
+}
+function ensureRange(a,z){
+ const k=a+"|"+z;if(k===rangeKey||!fs)return;rangeKey=k;if(unsubS)unsubS();
+ const t0=new Date(a+"T00:00:00").getTime(),t1=new Date(z+"T23:59:59.999").getTime();
+ unsubS=onSnapshot(query(collection(fs,"sales"),where("ts",">=",t0),where("ts","<=",t1),orderBy("ts","desc")),
+  s=>{db.sales=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},fail("Se perdió la conexión con las ventas."));
+}
+function ensureMine(){
+ const k="mine|"+today();if(k===rangeKey||!fs)return;rangeKey=k;if(unsubS)unsubS();
+ unsubS=onSnapshot(query(collection(fs,"sales"),where("uid","==",auth.currentUser.uid),where("day","==",today())),
+  s=>{db.sales=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},fail("Se perdió la conexión con las ventas."));
+}
+const lastDay=m=>{const [y,mo]=m.split("-").map(Number);return m+"-"+String(new Date(y,mo,0).getDate()).padStart(2,"0")};
+function commitSale(items,pay){
+ const b=writeBatch(fs);b.set(doc(collection(fs,"sales")),{ts:Date.now(),day:today(),items,pay,uid:auth.currentUser.uid,user:nombre});
+ items.forEach(i=>b.update(doc(fs,"products",i.pid),{stock:increment(-i.qty)}));
+ b.commit().catch(fail("No se pudo guardar la venta. Reintentá."));
+}
+function annul(id){
+ const s=db.sales.find(x=>x.id===id);if(!s)return;
+ const b=writeBatch(fs);b.delete(doc(fs,"sales",id));
+ s.items.forEach(i=>{if(db.products.some(p=>p.id===i.pid))b.update(doc(fs,"products",i.pid),{stock:increment(i.qty)})});
+ b.commit().catch(fail("No se pudo anular la venta."));
+}
+function startData(){
+ unsubP=onSnapshot(collection(fs,"products"),s=>{db.products=s.docs.map(d=>({id:d.id,...d.data()}));note("");refresh()},fail("Se perdió la conexión con los productos."));
+}
+function stopData(){rol="";nombre="";document.body.classList.remove("emp");if(unsubP)unsubP();if(unsubS)unsubS();unsubP=unsubS=null;rangeKey="";db={products:[],sales:[]};cart=[]}
+function boot(){
+ if(CFG.apiKey==="PEGAR_AQUI"){$("login").classList.remove("hide");note("Falta pegar la configuración de Firebase en el archivo (ver la guía).");return}
+ const app=initializeApp(CFG);auth=getAuth(app);fs=getFirestore(app);
+ onAuthStateChanged(auth,async u=>{
+  if(u){
+   try{const sn=await getDoc(doc(fs,"users",u.uid));const d=sn.exists()?sn.data():null;
+    if(!d||(d.rol!=="admin"&&d.rol!=="empleado")){note("Tu usuario no está habilitado. Avisale al administrador.");await signOut(auth);return}
+    rol=d.rol;nombre=d.nombre||d.usuario||"";
+   }catch(e){note("No se pudo verificar tu usuario.");await signOut(auth);return}
+   document.body.classList.toggle("emp",rol!=="admin");
+   $("who").textContent="👤 "+(nombre||"Usuario")+" · "+(rol==="admin"?"Administrador":"Empleado");
+   $("login").classList.add("hide");$("app").classList.remove("hide");startData()}
+  else{stopData();$("app").classList.add("hide");$("login").classList.remove("hide")}});
+}
+$("lgo").onclick=async()=>{if(!auth)return;try{await signInWithEmailAndPassword(auth,toEmail($("lem").value),$("lpw").value);note("")}catch(e){note("Email o contraseña incorrectos.")}};
+$("lpw").onkeydown=e=>{if(e.key==="Enter")$("lgo").click()};
+$("eq").oninput=renderStock;
+$("lpwb").onclick=async()=>{const p=window.prompt("Nueva contraseña (mínimo 6 caracteres):");if(!p)return;if(p.length<6){alert("Es muy corta.");return}
+ try{await updatePassword(auth.currentUser,p);alert("Contraseña cambiada.")}catch(e){alert(e.code==="auth/requires-recent-login"?"Por seguridad, cerrá sesión, volvé a entrar y probá de nuevo.":"No se pudo cambiar la contraseña.")}};
+async function renderUsers(){
+ if(rol!=="admin"||!fs)return;
+ try{const sn=await getDocs(collection(fs,"users"));
+  $("ulist").innerHTML=sn.docs.map(d=>{const u=d.data();const baja=u.rol==="baja";
+   return `<div class="row" data-id="${d.id}"><span>${esc(u.nombre||"")} <small class="mut">(${esc(u.usuario||"")}) · ${u.rol==="admin"?"Administrador":u.rol==="empleado"?"Empleado":"Dado de baja"}</small></span><span>${d.id===auth.currentUser.uid?"":`<button data-a="${baja?"alta":"baja"}">${baja?"Reactivar":"Dar de baja"}</button>`}</span></div>`}).join("")||'<div class="mut">Sin usuarios.</div>'
+ }catch(e){note("No se pudo cargar la lista de usuarios.")}}
+$("ulist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;const id=b.closest(".row").dataset.id;
+ try{await updateDoc(doc(fs,"users",id),{rol:b.dataset.a==="baja"?"baja":"empleado"});renderUsers()}catch(x){note("No se pudo actualizar el usuario.")}};
+$("u_add").onclick=async()=>{
+ const n=$("u_n").value.trim(),us=toEmail($("u_u").value).replace(DOMINIO,""),p=$("u_p").value,r=$("u_r").value;
+ if(!n||!us||p.length<6){$("umsg").textContent="Completá nombre, usuario y una contraseña de al menos 6 caracteres.";return}
+ if(!/^[a-z0-9._-]+$/.test(us)){$("umsg").textContent="El usuario solo puede tener letras, números, punto, guion y guion bajo.";return}
+ $("umsg").textContent="Creando...";
+ try{
+  const sa=getAuth(initializeApp(CFG,"alta"+Date.now()));
+  const c=await createUserWithEmailAndPassword(sa,us+DOMINIO,p);
+  await setDoc(doc(fs,"users",c.user.uid),{nombre:n,usuario:us,rol:r});
+  await signOut(sa);
+  ["u_n","u_u","u_p"].forEach(i=>$(i).value="");$("umsg").textContent="Usuario creado: "+us;renderUsers();
+ }catch(e){$("umsg").textContent=e.code==="auth/email-already-in-use"?"Ese usuario ya existe.":e.code==="permission-denied"?"No tenés permiso para crear usuarios.":"No se pudo crear el usuario."}};
+$("lout").onclick=()=>{if(auth)signOut(auth)};
+
+/* ---------- navegación ---------- */
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on",x===b));
+ ["v","s","h","m","u","b"].forEach(t=>$(t).classList.toggle("hide",t!==b.dataset.t));
+ if(b.dataset.t==="s")renderStock(); if(b.dataset.t==="h")renderDay(); if(b.dataset.t==="m")renderMonth(); if(b.dataset.t==="u")renderUsers(); if(b.dataset.t==="b")$("bk").value="";
+ if(b.dataset.t==="v")renderPlist();
+});
+
+/* ---------- vender ---------- */
+function renderPlist(){
+ const q=$("q").value.trim().toLowerCase();
+ const list=db.products.filter(p=>p.name.toLowerCase().includes(q)||(p.bar&&p.bar.toLowerCase()===q)).sort((a,b)=>a.name.localeCompare(b.name));
+ $("plist").innerHTML=list.map(p=>`<button class="pit ${p.stock<=p.min?"low":""}" data-id="${p.id}" ${p.stock<=0?"disabled":""}>
+  <span>${esc(p.name)}<br><small>Stock: ${p.stock}</small></span><b>${money(p.price)}</b></button>`).join("")||'<div class="mut">No hay productos. Cargalos en la pestaña Stock.</div>';
+}
+$("q").oninput=renderPlist;
+$("q").onkeydown=e=>{if(e.key!=="Enter")return;const c=$("q").value.trim();if(!c)return;
+ const p=db.products.find(x=>x.bar&&x.bar===c);
+ if(p){addCart(p.id);$("q").value="";renderPlist()}else if(/^\d+$/.test(c)){$("vmsg").textContent="No hay ningún producto con el código "+c}};
+$("plist").onclick=e=>{const b=e.target.closest("button[data-id]");if(!b)return;addCart(b.dataset.id)};
+function addCart(id){
+ const p=db.products.find(x=>x.id===id);const it=cart.find(c=>c.id===id);
+ const have=it?it.qty:0;
+ if(have+1>p.stock){$("vmsg").textContent="No hay más stock de "+p.name;return}
+ $("vmsg").textContent="";
+ if(it)it.qty++;else cart.push({id,qty:1});
+ renderCart();
+}
+function renderCart(){
+ let t=0;
+ $("cart").innerHTML=cart.map(c=>{const p=db.products.find(x=>x.id===c.id);t+=p.price*c.qty;
+  return `<div class="row"><span>${esc(p.name)}<br><small class="mut">${money(p.price)} c/u</small></span>
+  <span class="q"><button data-a="m" data-id="${c.id}">−</button><b>${c.qty}</b><button data-a="p" data-id="${c.id}">+</button><button data-a="x" data-id="${c.id}" class="d">✕</button></span></div>`}).join("")||'<div class="mut">Tocá un producto para agregarlo.</div>';
+ $("ctot").textContent=money(t);
+}
+$("cart").onclick=e=>{const b=e.target.closest("button");if(!b)return;const id=b.dataset.id,c=cart.find(x=>x.id===id);
+ if(b.dataset.a==="p")addCart(id);
+ if(b.dataset.a==="m"){c.qty--;if(c.qty<=0)cart=cart.filter(x=>x!==c);renderCart()}
+ if(b.dataset.a==="x"){cart=cart.filter(x=>x!==c);renderCart()}};
+$("cobrar").onclick=()=>{
+ if(!cart.length){$("vmsg").textContent="La venta está vacía.";return}
+ if(!fs||!auth.currentUser){$("vmsg").textContent="No se puede guardar: iniciá sesión.";return}
+ for(const c of cart){const p=db.products.find(x=>x.id===c.id);if(!p||c.qty>p.stock){$("vmsg").textContent="Cambió el stock de "+(p?p.name:"un producto")+". Revisá la venta.";return}}
+ const items=cart.map(c=>{const p=db.products.find(x=>x.id===c.id);return{pid:p.id,name:p.name,qty:c.qty,price:p.price,cost:p.cost}});
+ const pay=$("pay").value;
+ commitSale(items,pay);cart=[];$("vmsg").textContent="";renderCart();renderPlist();$("q").focus();
+ $("vmsg").style.color="var(--ok)";$("vmsg").textContent="✔ Venta registrada, stock actualizado.";
+ setTimeout(()=>{$("vmsg").textContent="";$("vmsg").style.color=""},2500);
+};
+
+/* ---------- stock ---------- */
+function renderStock(){
+ if(rol!=="admin"){const q=$("eq").value.trim().toLowerCase();
+  $("elist").innerHTML=db.products.filter(p=>p.name.toLowerCase().includes(q)||(p.bar&&p.bar===q)).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<div class="row ${p.stock<=p.min?"low":""}"><span>${esc(p.name)}</span><span><b>${p.stock}</b> · ${money(p.price)}${p.stock<=p.min?" ⚠":""}</span></div>`).join("")||'<div class="mut">Sin productos.</div>';return}
+ let vc=0,vv=0;
+ $("stbody").innerHTML=db.products.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(p=>{vc+=p.stock*p.cost;vv+=p.stock*p.price;
+  return `<tr class="${p.stock<=p.min?"low":""}" data-id="${p.id}">
+  <td><input data-f="name" value="${esc(p.name)}"></td>
+  <td><input data-f="bar" value="${esc(p.bar||"")}"></td>
+  <td><input data-f="cost" type="number" step="any" value="${p.cost}"></td>
+  <td><input data-f="price" type="number" step="any" value="${p.price}"></td>
+  <td><input data-f="min" type="number" step="any" value="${p.min}"></td>
+  <td><b>${p.stock}</b>${p.stock<=p.min?" ⚠ reponer":""}</td>
+  <td><input data-f="add" type="number" min="0" step="any" placeholder="+ cant." style="max-width:90px"> <button data-a="add">Sumar</button></td>
+  <td><button class="d" data-a="del">Borrar</button></td></tr>`}).join("");
+ $("sval").textContent="· Mercadería a costo: "+money(vc)+" · a precio de venta: "+money(vv);
+}
+$("stbody").onchange=e=>{const i=e.target;const f=i.dataset.f;if(!f||f==="add")return;
+ const p=db.products.find(x=>x.id===i.closest("tr").dataset.id);
+ let val;
+ if(f==="name"){val=i.value.trim();if(!val){i.value=p.name;return}}
+ else if(f==="bar"){val=i.value.trim();if(val&&db.products.some(x=>x!==p&&x.bar===val)){i.value=p.bar||"";return}}
+ else val=Math.max(0,+i.value||0);
+ upd(p.id,{[f]:val})};
+$("stbody").onclick=e=>{const b=e.target.closest("button");if(!b)return;const tr=b.closest("tr");const p=db.products.find(x=>x.id===tr.dataset.id);
+ if(b.dataset.a==="add"){const q=+tr.querySelector('[data-f="add"]').value;if(q>0){upd(p.id,{stock:increment(q)})}}
+ if(b.dataset.a==="del"){if(b.dataset.s){deleteDoc(doc(fs,"products",p.id)).catch(fail("No se pudo borrar."))}else{b.dataset.s=1;b.textContent="¿Seguro?"}}};
+$("n_add").onclick=()=>{
+ const name=$("n_name").value.trim();
+ if(!name){$("smsg").textContent="Poné un nombre.";return}
+ if(db.products.some(p=>p.name.toLowerCase()===name.toLowerCase())){$("smsg").textContent="Ya existe un producto con ese nombre.";return}
+ const bar=$("n_bar").value.trim();
+ if(bar&&db.products.some(p=>p.bar===bar)){$("smsg").textContent="Ese código de barras ya está en otro producto.";return}
+ if(!fs){$("smsg").textContent="Iniciá sesión primero.";return}
+ addDoc(collection(fs,"products"),{name,bar,cost:+$("n_cost").value||0,price:+$("n_price").value||0,stock:+$("n_stock").value||0,min:+$("n_min").value||0}).catch(fail("No se pudo guardar el producto."));["n_bar","n_name","n_cost","n_price","n_stock","n_min"].forEach(i=>$(i).value="");$("smsg").textContent="";renderStock()};
+
+/* ---------- ventas del día ---------- */
+function renderDay(){
+ let a=$("hfrom").value||today(),z=$("hto").value||a;
+ if(a>z)[a,z]=[z,a];
+ if(rol!=="admin"){a=z=today();ensureMine()}else ensureRange(a,z);
+ const ss=db.sales.filter(s=>{const d=dayOf(s.ts);return d>=a&&d<=z}).sort((x,y)=>y.ts-x.ts);
+ let tv=0,tg=0;
+ $("hlist").innerHTML=ss.map(s=>{const t=s.items.reduce((a,i)=>a+i.qty*i.price,0),g=s.items.reduce((a,i)=>a+i.qty*(i.price-i.cost),0);tv+=t;tg+=g;
+  return `<div class="row" data-id="${s.id}"><span><b>${new Date(s.ts).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</b> · ${s.items.map(i=>i.qty+"× "+esc(i.name)).join(", ")} <small class="mut">(${esc(s.pay||"Sin dato")}${s.user?" · "+esc(s.user):""})</small></span>
+  <span><b>${money(t)}</b> <button class="d adm" data-a="undo">Anular</button></span></div>`}).join("")||'<div class="mut">No hay ventas en estas fechas.</div>';
+ $("k1").textContent=money(tv);$("k2").textContent=money(tg);$("k3").textContent=ss.length;
+ const bp={};ss.forEach(s=>{const k=s.pay||"Sin dato";bp[k]=(bp[k]||0)+s.items.reduce((a,i)=>a+i.qty*i.price,0)});
+ $("hpay").innerHTML="<h2>Cierre de caja por medio de pago</h2>"+(Object.keys(bp).map(k=>`<div class="row"><span>${esc(k)}</span><b>${money(bp[k])}</b></div>`).join("")||'<span class="mut">Sin ventas.</span>');
+ if(rol==="admin"){const bu={};ss.forEach(s=>{const k=s.user||"Sin dato";bu[k]=(bu[k]||0)+s.items.reduce((a,i)=>a+i.qty*i.price,0)});
+  $("hpay").innerHTML+="<h2 style='margin-top:12px'>Por vendedor</h2>"+(Object.keys(bu).map(k=>`<div class="row"><span>${esc(k)}</span><b>${money(bu[k])}</b></div>`).join("")||'<span class="mut">Sin ventas.</span>')}
+}
+const setR=(a,b)=>{$("hfrom").value=a;$("hto").value=b;renderDay()};
+const ago=n=>{const d=new Date();d.setDate(d.getDate()-n);return dayOf(d.getTime())};
+$("hfrom").value=$("hto").value=today();
+$("hfrom").onchange=$("hto").onchange=renderDay;
+$("rhoy").onclick=()=>setR(today(),today());
+$("r7").onclick=()=>setR(ago(6),today());
+$("rmes").onclick=()=>setR(today().slice(0,8)+"01",today());
+$("hlist").onclick=e=>{const b=e.target.closest("button");if(!b)return;
+ if(!b.dataset.s){b.dataset.s=1;b.textContent="¿Seguro?";return}
+ annul(b.closest(".row").dataset.id)};
+
+/* ---------- resumen mensual ---------- */
+function renderMonth(){
+ const m=$("mmonth").value||today().slice(0,7);
+ ensureRange(m+"-01",lastDay(m));
+ const ss=db.sales.filter(s=>dayOf(s.ts).slice(0,7)===m);
+ const days={},prods={},bp={};let tv=0,tg=0;
+ ss.forEach(s=>{const d=dayOf(s.ts);days[d]=days[d]||{v:0,g:0,n:0,p:{}};days[d].n++;
+  {const k=s.pay||"Sin dato",t=s.items.reduce((a,i)=>a+i.qty*i.price,0);days[d].p[k]=(days[d].p[k]||0)+t;bp[k]=(bp[k]||0)+t}
+  s.items.forEach(i=>{const v=i.qty*i.price,g=i.qty*(i.price-i.cost);days[d].v+=v;days[d].g+=g;tv+=v;tg+=g;prods[i.name]=(prods[i.name]||0)+i.qty})});
+ $("mpay").innerHTML="<h2>Ventas del mes por medio de pago</h2>"+(Object.keys(bp).map(k=>`<div class="row"><span>${esc(k)}</span><b>${money(bp[k])}</b></div>`).join("")||'<span class="mut">Sin ventas.</span>');
+ $("m1").textContent=money(tv);$("m2").textContent=money(tg);$("m3").textContent=ss.length;
+ $("mdays").innerHTML=Object.keys(days).sort().map(d=>`<div class="row"><span>${d.split("-").reverse().join("/")} <small class="mut">(${days[d].n} ventas)</small><br><small class="mut">${Object.entries(days[d].p).map(([k,v])=>esc(k)+": "+money(v)).join(" · ")}</small></span><span><b>${money(days[d].v)}</b> <small class="mut">gan. ${money(days[d].g)}</small></span></div>`).join("")||'<div class="mut">Sin ventas en este mes.</div>';
+ $("mtop").innerHTML=Object.entries(prods).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([n,q],i)=>`<div class="row"><span>${i+1}. ${esc(n)}</span><b>${q} u.</b></div>`).join("")||'<div class="mut">Sin ventas en este mes.</div>';
+}
+$("mmonth").value=today().slice(0,7);$("mmonth").onchange=renderMonth;
+
+/* ---------- backup ---------- */
+$("bcopy").onclick=async()=>{
+ if(!fs)return;$("bmsg").textContent="Preparando copia...";
+ try{
+  const [ps,ss]=await Promise.all([getDocs(collection(fs,"products")),getDocs(collection(fs,"sales"))]);
+  const t=JSON.stringify({products:ps.docs.map(d=>({id:d.id,...d.data()})),sales:ss.docs.map(d=>({id:d.id,...d.data()}))});
+  $("bk").value=t;$("bk").select();
+  try{await navigator.clipboard.writeText(t);$("bmsg").textContent="Copiado ("+ps.size+" productos, "+ss.size+" ventas)."}catch(e){$("bmsg").textContent="Seleccioná el texto y copialo con Ctrl+C."}
+ }catch(e){$("bmsg").textContent="No se pudo preparar la copia."}};
+$("brest").onclick=async()=>{let d;
+ try{d=JSON.parse($("bk").value);if(!Array.isArray(d.products)||!Array.isArray(d.sales))throw 0}catch(e){$("bmsg").textContent="El texto no es una copia válida.";return}
+ if(!fs){$("bmsg").textContent="Sin conexión a la base de datos.";return}
+ if(db.products.length&&!$("brest").dataset.s){$("brest").dataset.s=1;$("bmsg").textContent="Ya hay datos cargados. Importar puede pisar productos existentes. Apretá de nuevo para confirmar.";return}
+ $("brest").dataset.s="";
+ const ops=[];
+ d.products.forEach(p=>ops.push([doc(fs,"products",p.id),{name:p.name,bar:p.bar||"",cost:p.cost,price:p.price,min:p.min,stock:p.stock}]));
+ d.sales.forEach(s=>ops.push([doc(fs,"sales",s.id),{ts:s.ts,day:dayOf(s.ts),items:s.items,pay:s.pay||"",uid:s.uid||"",user:s.user||""}]));
+ try{
+  for(let i=0;i<ops.length;i+=400){const b=writeBatch(fs);ops.slice(i,i+400).forEach(([r,x])=>b.set(r,x));await b.commit();$("bmsg").textContent="Importando "+Math.min(i+400,ops.length)+" de "+ops.length+"..."}
+  $("bmsg").textContent="Listo: datos importados."
+ }catch(e){$("bmsg").textContent="Se cortó la importación. Podés reintentar."}};
+
+boot();
+</script>
+</body>
+</html>
