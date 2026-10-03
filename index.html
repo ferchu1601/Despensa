@@ -65,6 +65,7 @@ body.emp .adm{display:none!important}body:not(.emp) .emo{display:none}
  <button data-t="s">Stock</button>
  <button data-t="h">Ventas por fecha</button>
  <button data-t="m" class="adm">Resumen mensual</button>
+ <button data-t="g" class="adm">Proveedores</button>
  <button data-t="u" class="adm">Usuarios</button>
  <button data-t="b" class="adm">Copia de seguridad</button>
 </nav>
@@ -128,12 +129,28 @@ body.emp .adm{display:none!important}body:not(.emp) .emo{display:none}
 
 <section id="m" class="hide">
  <div class="card"><label>Mes</label><input id="mmonth" type="month" style="max-width:200px"></div>
- <div class="kp"><div>Ventas del mes<b id="m1">$0</b></div><div>Ganancia del mes<b id="m2">$0</b></div><div>Cantidad de ventas<b id="m3">0</b></div></div>
+ <div class="kp"><div>Ventas del mes<b id="m1">$0</b></div><div>Ganancia del mes<b id="m2">$0</b></div><div>Cantidad de ventas<b id="m3">0</b></div><div class="adm">Gastos del mes<b id="m4">$0</b></div><div class="adm">Ventas menos gastos<b id="m5">$0</b></div></div>
  <div class="card" id="mpay"></div>
  <div class="grid">
   <div class="card"><h2>Por día</h2><div id="mdays"></div></div>
   <div class="card"><h2>Productos más vendidos</h2><div id="mtop"></div></div>
  </div>
+</section>
+
+<section id="g" class="hide adm">
+ <div class="card"><h2>Registrar gasto / pago a proveedor</h2><div class="f">
+  <div><label>Fecha</label><input id="g_d" type="date"></div>
+  <div><label>Proveedor</label><input id="g_p" list="g_pl" autocomplete="off"><datalist id="g_pl"></datalist></div>
+  <div><label>Detalle</label><input id="g_t" placeholder="Ej: factura 123, reposición"></div>
+  <div><label>Monto ($)</label><input id="g_m" type="number" min="0" step="any"></div>
+  <div><label>Pagado con</label><select id="g_f"><option>Efectivo</option><option>Transferencia</option><option>Débito</option><option>Crédito</option><option>Mercado Pago</option></select></div>
+  <button class="p" id="g_add">Agregar</button></div><div class="msg" id="gmsg"></div></div>
+ <div class="card"><div class="f">
+  <div><label>Desde</label><input id="gfrom" type="date"></div><div><label>Hasta</label><input id="gto" type="date"></div>
+  <button id="grhoy">Hoy</button><button id="gr7">Últimos 7 días</button><button id="grmes">Este mes</button></div></div>
+ <div class="kp"><div>Total gastado<b id="gk1">$0</b></div><div>Cantidad de gastos<b id="gk2">0</b></div><div>Proveedor con más gasto<b id="gk3">-</b></div></div>
+ <div class="grid"><div class="card"><h2>Por proveedor</h2><div id="gprov"></div></div><div class="card"><h2>Por forma de pago</h2><div id="gpay"></div></div></div>
+ <div class="card"><h2>Detalle</h2><div id="glist"></div></div>
 </section>
 
 <section id="u" class="hide adm">
@@ -168,7 +185,7 @@ import {getFirestore,collection,doc,addDoc,updateDoc,deleteDoc,onSnapshot,query,
 // ====== CONFIGURACIÓN: completá con los datos de TU proyecto de Firebase (ver la guía) ======
 const NOMBRE="🛒 Mi Despensa";
 const DOMINIO="@usuarios.example.com"; // no hace falta cambiarlo: es solo para armar el login por usuario
-const CFG={apiKey:"AIzaSyB34yj4X4uC28j3bHRxFTGBKth3rDJqSEo",authDomain:"mi-despensa-c832e.firebaseapp.com",projectId:"mi-despensa-c832e",storageBucket:"mi-despensa-c832e.firebasestorage.app",messagingSenderId:"778690538810",appId:"1:778690538810:web:612213cc62046d49747403"};
+const CFG={apiKey:"PEGAR_AQUI",authDomain:"PEGAR_AQUI",projectId:"PEGAR_AQUI",storageBucket:"PEGAR_AQUI",messagingSenderId:"PEGAR_AQUI",appId:"PEGAR_AQUI"};
 // ==========================================================================================
 
 let db={products:[],sales:[]};
@@ -181,7 +198,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth
 const dayOf=ts=>{const d=new Date(ts);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
 
 document.title=NOMBRE+" - Caja y Stock";document.querySelector("h1").textContent=NOMBRE;
-let fs=null,auth=null,unsubP=null,unsubS=null,rangeKey="",rol="",nombre="";
+let fs=null,auth=null,unsubP=null,unsubS=null,rangeKey="",rol="",nombre="",unsubE=null,expKey="";
 const toEmail=u=>u.includes("@")?u.trim():u.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"")+DOMINIO;
 const note=t=>{$("net").textContent=t};
 const fail=m=>e=>note(e&&e.code==="permission-denied"?"Tu usuario no tiene permiso en este sistema. Avisale al dueño.":m);
@@ -189,9 +206,9 @@ function upd(id,o){updateDoc(doc(fs,"products",id),o).catch(fail("No se pudo gua
 function refresh(){
  cart=cart.filter(c=>db.products.some(p=>p.id===c.id));
  renderPlist();renderCart();
- const t=["s","h","m"].find(x=>!$(x).classList.contains("hide"));
+ const t=["s","h","m","g"].find(x=>!$(x).classList.contains("hide"));
  if(t==="s"&&!$("stbody").contains(document.activeElement))renderStock();
- if(t==="h")renderDay(); if(t==="m")renderMonth();
+ if(t==="h")renderDay(); if(t==="m")renderMonth(); if(t==="g")renderExp();
 }
 function ensureRange(a,z){
  const k=a+"|"+z;if(k===rangeKey||!fs)return;rangeKey=k;if(unsubS)unsubS();
@@ -219,7 +236,7 @@ function annul(id){
 function startData(){
  unsubP=onSnapshot(collection(fs,"products"),s=>{db.products=s.docs.map(d=>({id:d.id,...d.data()}));note("");refresh()},fail("Se perdió la conexión con los productos."));
 }
-function stopData(){rol="";nombre="";document.body.classList.remove("emp");if(unsubP)unsubP();if(unsubS)unsubS();unsubP=unsubS=null;rangeKey="";db={products:[],sales:[]};cart=[]}
+function stopData(){rol="";nombre="";document.body.classList.remove("emp");if(unsubP)unsubP();if(unsubS)unsubS();unsubP=unsubS=null;rangeKey="";if(unsubE)unsubE();unsubE=null;expKey="";db={products:[],sales:[],exp:[]};cart=[]}
 function boot(){
  if(CFG.apiKey==="PEGAR_AQUI"){$("login").classList.remove("hide");note("Falta pegar la configuración de Firebase en el archivo (ver la guía).");return}
  const app=initializeApp(CFG);auth=getAuth(app);fs=getFirestore(app);
@@ -264,8 +281,8 @@ $("lout").onclick=()=>{if(auth)signOut(auth)};
 /* ---------- navegación ---------- */
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{
  document.querySelectorAll("#nav button").forEach(x=>x.classList.toggle("on",x===b));
- ["v","s","h","m","u","b"].forEach(t=>$(t).classList.toggle("hide",t!==b.dataset.t));
- if(b.dataset.t==="s")renderStock(); if(b.dataset.t==="h")renderDay(); if(b.dataset.t==="m")renderMonth(); if(b.dataset.t==="u")renderUsers(); if(b.dataset.t==="b")$("bk").value="";
+ ["v","s","h","m","g","u","b"].forEach(t=>$(t).classList.toggle("hide",t!==b.dataset.t));
+ if(b.dataset.t==="s")renderStock(); if(b.dataset.t==="h")renderDay(); if(b.dataset.t==="m")renderMonth(); if(b.dataset.t==="g")renderExp(); if(b.dataset.t==="u")renderUsers(); if(b.dataset.t==="b")$("bk").value="";
  if(b.dataset.t==="v")renderPlist();
 });
 
@@ -378,17 +395,59 @@ $("hlist").onclick=e=>{const b=e.target.closest("button");if(!b)return;
 function renderMonth(){
  const m=$("mmonth").value||today().slice(0,7);
  ensureRange(m+"-01",lastDay(m));
+ ensureExp(m+"-01",lastDay(m));
  const ss=db.sales.filter(s=>dayOf(s.ts).slice(0,7)===m);
  const days={},prods={},bp={};let tv=0,tg=0;
  ss.forEach(s=>{const d=dayOf(s.ts);days[d]=days[d]||{v:0,g:0,n:0,p:{}};days[d].n++;
   {const k=s.pay||"Sin dato",t=s.items.reduce((a,i)=>a+i.qty*i.price,0);days[d].p[k]=(days[d].p[k]||0)+t;bp[k]=(bp[k]||0)+t}
   s.items.forEach(i=>{const v=i.qty*i.price,g=i.qty*(i.price-i.cost);days[d].v+=v;days[d].g+=g;tv+=v;tg+=g;prods[i.name]=(prods[i.name]||0)+i.qty})});
  $("mpay").innerHTML="<h2>Ventas del mes por medio de pago</h2>"+(Object.keys(bp).map(k=>`<div class="row"><span>${esc(k)}</span><b>${money(bp[k])}</b></div>`).join("")||'<span class="mut">Sin ventas.</span>');
+ const gx=(db.exp||[]).filter(e=>e.day.slice(0,7)===m).reduce((a,e)=>a+e.monto,0);
+ $("m4").textContent=money(gx);$("m5").textContent=money(tv-gx);
  $("m1").textContent=money(tv);$("m2").textContent=money(tg);$("m3").textContent=ss.length;
  $("mdays").innerHTML=Object.keys(days).sort().map(d=>`<div class="row"><span>${d.split("-").reverse().join("/")} <small class="mut">(${days[d].n} ventas)</small><br><small class="mut">${Object.entries(days[d].p).map(([k,v])=>esc(k)+": "+money(v)).join(" · ")}</small></span><span><b>${money(days[d].v)}</b> <small class="mut">gan. ${money(days[d].g)}</small></span></div>`).join("")||'<div class="mut">Sin ventas en este mes.</div>';
  $("mtop").innerHTML=Object.entries(prods).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([n,q],i)=>`<div class="row"><span>${i+1}. ${esc(n)}</span><b>${q} u.</b></div>`).join("")||'<div class="mut">Sin ventas en este mes.</div>';
 }
 $("mmonth").value=today().slice(0,7);$("mmonth").onchange=renderMonth;
+
+/* ---------- proveedores y gastos ---------- */
+function ensureExp(a,z){
+ const k=a+"|"+z;if(k===expKey||!fs)return;expKey=k;if(unsubE)unsubE();
+ const t0=new Date(a+"T00:00:00").getTime(),t1=new Date(z+"T23:59:59.999").getTime();
+ unsubE=onSnapshot(query(collection(fs,"expenses"),where("ts",">=",t0),where("ts","<=",t1),orderBy("ts","desc")),
+  s=>{db.exp=s.docs.map(d=>({id:d.id,...d.data()}));refresh()},fail("Se perdió la conexión con los gastos."));
+}
+function renderExp(){
+ let a=$("gfrom").value||today(),z=$("gto").value||a;if(a>z)[a,z]=[z,a];
+ ensureExp(a,z);
+ const ex=(db.exp||[]).filter(e=>e.day>=a&&e.day<=z).sort((x,y)=>y.ts-x.ts);
+ let t=0;const bp={},bf={};
+ ex.forEach(e=>{t+=e.monto;bp[e.proveedor]=(bp[e.proveedor]||0)+e.monto;bf[e.pay]=(bf[e.pay]||0)+e.monto});
+ $("gk1").textContent=money(t);$("gk2").textContent=ex.length;
+ const top=Object.entries(bp).sort((x,y)=>y[1]-x[1])[0];$("gk3").textContent=top?top[0]:"-";
+ const rows=o=>Object.entries(o).sort((x,y)=>y[1]-x[1]).map(([k,v])=>`<div class="row"><span>${esc(k)}</span><b>${money(v)}</b></div>`).join("")||'<div class="mut">Sin gastos.</div>';
+ $("gprov").innerHTML=rows(bp);$("gpay").innerHTML=rows(bf);
+ $("glist").innerHTML=ex.map(e=>`<div class="row" data-id="${e.id}"><span><b>${e.day.split("-").reverse().join("/")}</b> · ${esc(e.proveedor)}${e.detalle?" · "+esc(e.detalle):""} <small class="mut">(${esc(e.pay)}${e.user?" · "+esc(e.user):""})</small></span><span><b>${money(e.monto)}</b> <button class="d" data-a="del">Borrar</button></span></div>`).join("")||'<div class="mut">No hay gastos en estas fechas.</div>';
+ $("g_pl").innerHTML=[...new Set((db.exp||[]).map(e=>e.proveedor))].map(p=>`<option value="${esc(p)}">`).join("");
+}
+$("g_add").onclick=async()=>{
+ const d=$("g_d").value||today(),p=$("g_p").value.trim(),m=+$("g_m").value;
+ if(!p||!(m>0)){$("gmsg").textContent="Completá el proveedor y un monto mayor a 0.";return}
+ if(!fs)return;
+ try{
+  await addDoc(collection(fs,"expenses"),{ts:new Date(d+"T12:00:00").getTime(),day:d,proveedor:p,detalle:$("g_t").value.trim(),monto:m,pay:$("g_f").value,uid:auth.currentUser.uid,user:nombre});
+  $("g_p").value=$("g_t").value=$("g_m").value="";$("gmsg").textContent="✔ Gasto registrado.";setTimeout(()=>{$("gmsg").textContent=""},2000);
+  if(d<$("gfrom").value||d>$("gto").value){$("gfrom").value=$("gto").value=d;renderExp()}
+ }catch(e){$("gmsg").textContent="No se pudo guardar el gasto."}};
+$("glist").onclick=async e=>{const b=e.target.closest("button");if(!b)return;
+ if(!b.dataset.s){b.dataset.s=1;b.textContent="¿Seguro?";return}
+ try{await deleteDoc(doc(fs,"expenses",b.closest(".row").dataset.id))}catch(x){note("No se pudo borrar el gasto.")}};
+const setG=(a,b)=>{$("gfrom").value=a;$("gto").value=b;renderExp()};
+$("gfrom").value=$("gto").value=$("g_d").value=today();
+$("gfrom").onchange=$("gto").onchange=renderExp;
+$("grhoy").onclick=()=>setG(today(),today());
+$("gr7").onclick=()=>setG(ago(6),today());
+$("grmes").onclick=()=>setG(today().slice(0,8)+"01",today());
 
 /* ---------- backup ---------- */
 $("bcopy").onclick=async()=>{
