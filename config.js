@@ -4,10 +4,11 @@
 export const NOMBRE="🛒 Mi Despensa";
 export const DOMINIO="@usuarios.example.com"; // no hace falta cambiarlo
 export const CFG={
-  apiKey:"PEGAR_AQUI",
-  authDomain:"PEGAR_AQUI",
-  projectId:"PEGAR_AQUI",
-  storageBucket:"PEGAR_AQUI",
-  messagingSenderId:"PEGAR_AQUI",
-  appId:"PEGAR_AQUI"
+  apiKey:"AIzaSyB34yj4X4uC28j3bHRxFTGBKth3rDJqSEo",
+  authDomain:"mi-despensa-c832e.firebaseapp.com",
+  projectId:"mi-despensa-c832e",
+  storageBucket:"mi-despensa-c832e.firebasestorage.app",
+  messagingSenderId:"778690538810",
+  appId:"1:778690538810:web:612213cc62046d49747403"
 };
+
